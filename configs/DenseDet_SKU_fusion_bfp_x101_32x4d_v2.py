@@ -1,9 +1,9 @@
 # model settings
 model = dict(
-    type='CascadeRCNN',
-    pretrained='open-mmlab://resnext101_32x4d',
-    backbone=dict(
-        type='ResNeXt',
+    type='CascadeRCNN',  # The name of detector
+    pretrained='open-mmlab://resnext101_32x4d',  # The ImageNet pretrained backbone to be loaded
+    backbone=dict(  # The config of backbone
+        type='ResNeXt', # The type of the backbone, refer to https://github.com/open-mmlab/mmdetection/blob/master/mmdet/models/backbones/resnet.py#L288 for more details.
         depth=101,
         groups=32,
         base_width=4,
@@ -231,9 +231,9 @@ log_config = dict(
 # yapf:enable
 # runtime settings
 total_epochs = 24
-dist_params = dict(backend='nccl')
-log_level = 'INFO'
-work_dir = './work_dirs/SKU_fusion_bifpn_x50'
-load_from = None
-resume_from = None
-workflow = [('train', 1)]
+dist_params = dict(backend='nccl') # Parameters to setup distributed training, the port can also be set.
+log_level = 'INFO' # The level of logging.
+work_dir = './work_dirs/SKU_fusion_bifpn_x50' # Directory to save the model checkpoints and logs for the current experiments.
+load_from = '../checkpoints/DenseDet_SKU_fusion_bfp_x101_32x4d_v2.pth' # Load models as a pre-trained model from a given path. This will not resume training.
+resume_from = None  # Resume checkpoints from a given path, the training will be resumed from the epoch when the checkpoint's is saved.
+workflow = [('train', 1)]  # Workflow for runner. [('train', 1)] means there is only one workflow and the workflow named 'train' is executed once. The workflow trains the model by 12 epochs according to the total_epochs.
