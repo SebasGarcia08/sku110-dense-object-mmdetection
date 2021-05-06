@@ -1,3 +1,12 @@
+# Overwritten
+__pycache__
+dataset/images/*
+dataset/annotations/coco
+dataset/annotations/csv
+.idea
+models/DenseDet_SKU_fusion_bfp_x101_32x4d_v2.pth
+models/DenseDet_SKU_fusion_bfp_x101_32x4d_v1.pth
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
