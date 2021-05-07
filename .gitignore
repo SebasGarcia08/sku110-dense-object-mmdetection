@@ -6,6 +6,7 @@ dataset/annotations/csv
 .idea
 models/DenseDet_SKU_fusion_bfp_x101_32x4d_v2.pth
 models/DenseDet_SKU_fusion_bfp_x101_32x4d_v1.pth
+test_imgs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

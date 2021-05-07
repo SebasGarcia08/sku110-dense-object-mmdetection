@@ -1899,3 +1899,73 @@ class CutOut(object):
                      else f'cutout_shape={self.candidates}, ')
         repr_str += f'fill_in={self.fill_in})'
         return repr_str
+
+    
+@PIPELINES.register_module()
+class UniformRandomCrop(object):
+    """Random crop the image & bboxes & masks.
+    Args:
+        crop_size (tuple): Expected size after cropping, (h, w).
+    """
+
+    def __init__(self, crop_size):
+        self.crop_size = crop_size
+        self.crop_thresh = 0.25
+    def __call__(self, results):
+        img = results['img']
+        margin_h = max(img.shape[0] - self.crop_size[0], 0)
+        margin_w = max(img.shape[1] - self.crop_size[1], 0)
+        offset_idx = np.random.randint(0, 7)
+        offset_list = [(0,0),(0,margin_w),(margin_h,0),
+                       (margin_h,margin_w),(int(margin_h/2),int(margin_w/2)),
+                       (int(margin_h/2),0),(int(margin_h/2),margin_w)]
+        offset_h,offset_w = offset_list[offset_idx]
+        crop_y1, crop_y2 = offset_h, offset_h + self.crop_size[0]
+        crop_x1, crop_x2 = offset_w, offset_w + self.crop_size[1]
+        
+        # crop the image
+        img = img[crop_y1:crop_y2, crop_x1:crop_x2, :]
+        img_shape = img.shape
+        results['img'] = img
+        results['img_shape'] = img_shape
+        remain = {}
+        # crop bboxes accordingly and clip to the image boundary
+        for key in results.get('bbox_fields', []):
+            bbox_offset = np.array([offset_w, offset_h, offset_w, offset_h],
+                                   dtype=np.float32)
+            bboxes = results[key] - bbox_offset
+            area = abs((bboxes[:, 0] - bboxes[:, 2])*(bboxes[:, 1] - bboxes[:, 3]))
+            bboxes[:, 0::2] = np.clip(bboxes[:, 0::2], 0, img_shape[1] - 1)
+            bboxes[:, 1::2] = np.clip(bboxes[:, 1::2], 0, img_shape[0] - 1)
+            area_crop = abs((bboxes[:, 0] - bboxes[:, 2])*(bboxes[:, 1] - bboxes[:, 3]))
+            remain[key] = area_crop/area
+            results[key] = bboxes
+        # filter out the gt bboxes that are completely cropped
+        if 'gt_bboxes' in results:
+            gt_bboxes = results['gt_bboxes']
+            remain = remain['gt_bboxes']
+            
+            valid_inds = (gt_bboxes[:, 2] > gt_bboxes[:, 0]) & (
+                gt_bboxes[:, 3] > gt_bboxes[:, 1]) & (remain>self.crop_thresh) ### crop_thresh###
+            
+            # if no gt bbox remains after cropping, just skip this image
+            if not np.any(valid_inds):
+                return None
+            results['gt_bboxes'] = gt_bboxes[valid_inds, :]
+            if 'gt_labels' in results:
+                results['gt_labels'] = results['gt_labels'][valid_inds]
+
+            # filter and crop the masks
+            if 'gt_masks' in results:
+                valid_gt_masks = []
+                for i in np.where(valid_inds)[0]:
+                    gt_mask = results['gt_masks'][i][crop_y1:crop_y2,
+                                                     crop_x1:crop_x2]
+                    valid_gt_masks.append(gt_mask)
+                results['gt_masks'] = valid_gt_masks
+
+        return results
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(crop_size={})'.format(
+            self.crop_size)
